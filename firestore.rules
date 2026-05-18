@@ -1,0 +1,129 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ---- Global Helpers ----
+    function isSignedIn() { return request.auth != null; }
+    function isAdmin() { 
+      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid)) 
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    function isOwner(userId) { return isSignedIn() && request.auth.uid == userId; }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_-]+$'); }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+
+    // Validation definitions
+    function isValidUserConfig(data) {
+      return data.name is string && data.name.size() > 0 && data.name.size() <= 100
+        && (!("email" in data) || (data.email is string && data.email.size() <= 200))
+        && data.role is string && data.role in ['user', 'admin']
+        && data.averageScore is number
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidCategoryConfig(data) {
+      return data.name is string && data.name.size() > 0 && data.name.size() <= 100
+        && data.slug is string && data.slug.size() > 0 && data.slug.size() <= 100
+        && data.icon is string && data.icon.size() <= 50
+        && data.isActive is bool
+        && data.createdAt is timestamp;
+    }
+
+    function isValidRecommendationConfig(data) {
+        return data.title is string && data.title.size() > 0 && data.title.size() <= 150
+        && data.description is string && data.description.size() <= 5000
+        && data.categoryId is string && data.categoryId.size() <= 128
+        && data.authorId is string && data.authorId == request.auth.uid
+        && data.status is string && data.status in ['active', 'inactive']
+        && data.rating is number
+        && data.ratingsCount is number
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp
+        && (!('contactPhone' in data) || (data.contactPhone is string && data.contactPhone.size() <= 20))
+        && (!('contactWebsite' in data) || (data.contactWebsite is string && data.contactWebsite.size() <= 200));
+    }
+
+    function isValidReviewConfig(data) {
+        return data.keys().hasAll(['authorId', 'authorName', 'rating', 'comment', 'createdAt', 'updatedAt'])
+        && data.authorId is string && data.authorId == request.auth.uid
+        && data.authorName is string && data.authorName.size() <= 100
+        && data.rating is number && data.rating >= 1 && data.rating <= 5
+        && data.comment is string && data.comment.size() <= 1000
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidFavoriteConfig(data) {
+        return data.keys().hasAll(['recommendationId', 'createdAt'])
+        && data.recommendationId is string && data.recommendationId.size() <= 128
+        && data.createdAt is timestamp;
+    }
+
+    // Default allow all for testing
+    match /{document=**} { 
+      allow read, write: if true; 
+    }
+
+    // --- Users ---
+    match /users/{userId} {
+      allow read: if true; 
+      
+      allow create: if isOwner(userId)
+                    && isValidUserConfig(incoming())
+                    && incoming().createdAt == request.time
+                    && incoming().updatedAt == request.time
+                    && incoming().role == 'user'; 
+
+      allow update: if isValidUserConfig(incoming()) && (
+         (isOwner(userId) && incoming().updatedAt == request.time && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'updatedAt']))
+         || isAdmin()
+      );
+
+      match /favorites/{favoriteId} {
+        allow read: if isOwner(userId);
+        
+        allow create: if isOwner(userId) && isValidId(favoriteId) && isValidId(userId)
+            && isValidFavoriteConfig(incoming())
+            && exists(/databases/$(database)/documents/recommendations/$(incoming().recommendationId));
+            
+        allow delete: if isOwner(userId) && isValidId(favoriteId) && isValidId(userId);
+      }
+    }
+
+    // --- Categories ---
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow create: if isAdmin() && isValidCategoryConfig(incoming());
+      allow update: if isAdmin() && isValidCategoryConfig(incoming());
+      allow delete: if isAdmin();
+    }
+
+    // --- Recommendations ---
+    match /recommendations/{recommendationId} {
+      allow read: if true; 
+      
+      allow create: if isSignedIn() && isValidRecommendationConfig(incoming());
+                    
+      allow update: if isValidRecommendationConfig(incoming()) && (
+          (isSignedIn() && existing().authorId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'categoryId', 'status', 'contactPhone', 'contactWebsite', 'updatedAt']) && incoming().authorId == existing().authorId)
+          || (isSignedIn() && incoming().diff(existing()).affectedKeys().hasOnly(['rating', 'ratingsCount', 'updatedAt']))
+          || isAdmin()
+      );
+      allow delete: if (isSignedIn() && existing().authorId == request.auth.uid) || isAdmin();
+      
+      match /reviews/{reviewId} {
+        allow read: if true; 
+        
+        allow create: if isSignedIn() && isValidId(reviewId) && isValidId(recommendationId) && isValidReviewConfig(incoming());
+                      
+        allow update: if isSignedIn() && isValidId(reviewId) && isValidId(recommendationId) && isValidReviewConfig(incoming()) && (
+          (existing().authorId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['rating', 'comment', 'updatedAt']) && incoming().authorId == existing().authorId)
+          || isAdmin()
+        );
+        allow delete: if (isSignedIn() && existing().authorId == request.auth.uid) || isAdmin();
+      }
+    }
+  }
+}

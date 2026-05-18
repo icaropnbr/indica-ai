@@ -1,0 +1,62 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;600;700&family=Slackey&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Noto Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-slackey: 'Slackey', cursive;
+
+  --color-background: #0e0e0e;
+  
+  --color-primary: #8ccdff;
+  --color-on-primary: #00344e;
+  --color-primary-container: #166a98;
+  --color-on-primary-container: #c8e5ff;
+  
+  --color-surface: #101417;
+  --color-surface-variant: #323538;
+  --color-surface-container: #1d2023;
+  --color-surface-container-high: #272a2e;
+  --color-surface-container-lowest: #0b0f11;
+
+  --color-on-surface: #e1e2e7;
+  --color-on-surface-variant: #c0c7d0;
+  
+  --color-secondary-container: #394666;
+  --color-on-secondary-container: #a7b5da;
+  
+  --color-outline: #8a9299;
+  --color-outline-variant: #40484f;
+  
+  --color-error: #ffb4ab;
+  --color-on-error: #690005;
+}
+
+@layer base {
+  body {
+    background-color: var(--color-background);
+    color: var(--color-on-surface);
+  }
+  button, a, [role="button"] {
+    cursor: pointer;
+  }
+}
+
+@layer utilities {
+  .glass-card {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-top: 1px solid rgba(255, 255, 255, 0.15);
+    border-left: 1px solid rgba(255, 255, 255, 0.15);
+  }
+  .glow-primary {
+    box-shadow: 0 0 20px rgba(22, 106, 152, 0.15);
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}

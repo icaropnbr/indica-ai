@@ -1,0 +1,96 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile with role, reputation score, and personal details.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["user", "admin"] },
+        "averageScore": { "type": "number" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["name", "email", "role", "averageScore", "createdAt", "updatedAt"]
+    },
+    "Category": {
+      "title": "Category",
+      "description": "Categories for recommendations.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "slug": { "type": "string" },
+        "icon": { "type": "string" },
+        "isActive": { "type": "boolean" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["name", "slug", "icon", "isActive", "createdAt"]
+    },
+    "Recommendation": {
+      "title": "Recommendation",
+      "description": "A service recommendation post.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "categoryId": { "type": "string" },
+        "authorId": { "type": "string" },
+        "status": { "type": "string", "enum": ["active", "inactive"] },
+        "rating": { "type": "number" },
+        "ratingsCount": { "type": "number" },
+        "contactPhone": { "type": "string" },
+        "contactWebsite": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["title", "description", "categoryId", "authorId", "status", "rating", "ratingsCount", "createdAt", "updatedAt"]
+    },
+    "Review": {
+      "title": "Review",
+      "description": "A review for a recommendation.",
+      "type": "object",
+      "properties": {
+        "authorId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "rating": { "type": "number" },
+        "comment": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["authorId", "authorName", "rating", "comment", "createdAt", "updatedAt"]
+    },
+    "Favorite": {
+      "title": "Favorite",
+      "description": "A user's saved recommendation.",
+      "type": "object",
+      "properties": {
+        "recommendationId": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["recommendationId", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "Stores user profiles."
+    },
+    "/users/{userId}/favorites/{favoriteId}": {
+      "schema": { "$ref": "#/entities/Favorite" },
+      "description": "Stores user's favorite recommendations."
+    },
+    "/categories/{categoryId}": {
+      "schema": { "$ref": "#/entities/Category" },
+      "description": "Global list of service categories."
+    },
+    "/recommendations/{recommendationId}": {
+      "schema": { "$ref": "#/entities/Recommendation" },
+      "description": "User created service recommendations."
+    },
+    "/recommendations/{recommendationId}/reviews/{reviewId}": {
+      "schema": { "$ref": "#/entities/Review" },
+      "description": "Reviews left on a specific recommendation."
+    }
+  }
+}
