@@ -29,6 +29,7 @@ export function Admin() {
   const [newCatIcon, setNewCatIcon] = useState('category');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [catError, setCatError] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
   
   const [filterCategory, setFilterCategory] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
@@ -61,9 +62,24 @@ export function Admin() {
   };
 
   useEffect(() => {
-    getDashboardStats().then(setStats).catch(console.error);
-    fetchAllUsers().then(setAllUsers).catch(console.error);
-    fetchAllRecommendations().then(setAllRecs).catch(console.error);
+    setIsLoading(true);
+    const fetchData = async () => {
+      try {
+        const [statsRes, usersRes, recsRes] = await Promise.all([
+          getDashboardStats(),
+          fetchAllUsers(),
+          fetchAllRecommendations(),
+        ]);
+        setStats(statsRes);
+        setAllUsers(usersRes);
+        setAllRecs(recsRes);
+      } catch (error) {
+        console.error(error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchData();
   }, []);
 
   const handleSaveRole = async () => {
@@ -96,6 +112,14 @@ export function Admin() {
       alert('Erro ao atualizar status.');
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center py-24">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   const handleAddCategory = async (e: React.FormEvent) => {
     e.preventDefault();

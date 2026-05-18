@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ServiceCard } from '../components/ui/ServiceCard';
+import { SkeletonServiceCard } from '../components/ui/SkeletonServiceCard';
 import { ReviewModal } from '../components/ui/ReviewModal';
 import { useRecommendations } from '../hooks/useRecommendations';
 import { useCategories } from '../hooks/useCategories';
@@ -39,8 +40,8 @@ export function Home() {
     scrollRef.current.scrollLeft = scrollLeft - walk;
   };
 
-  const { recommendations, isLoading, mutate } = useRecommendations(selectedCategory);
-  const { categories } = useCategories();
+  const { recommendations, isLoading: recsLoading, mutate } = useRecommendations(selectedCategory);
+  const { categories, isLoading: categoriesLoading } = useCategories();
   const { user } = useAuth();
 
 
@@ -92,37 +93,49 @@ export function Home() {
           onTouchMove={onDragMove}
           className={`flex overflow-x-auto gap-3 no-scrollbar pb-2 w-full max-w-full ${isDragging ? 'cursor-grabbing select-none' : 'cursor-grab'}`}
         >
-          <button 
-            onClick={() => setSelectedCategory('')}
-            className={`px-6 py-2 rounded-full text-sm font-semibold whitespace-nowrap transition-colors flex-shrink-0 ${
-              selectedCategory === '' 
-                ? 'bg-primary text-on-primary shadow-[0_0_20px_rgba(22,106,152,0.3)]' 
-                : 'bg-secondary-container text-on-secondary-container hover:bg-white/10'
-            }`}
-          >
-            Todos
-          </button>
-          
-          {categories?.map((cat: any) => (
-            <button 
-              key={cat.id}
-              onClick={() => setSelectedCategory(cat.id)}
-              className={`px-6 py-2 rounded-full text-sm font-semibold whitespace-nowrap transition-colors flex-shrink-0 ${
-                selectedCategory === cat.id 
-                  ? 'bg-primary text-on-primary shadow-[0_0_20px_rgba(22,106,152,0.3)]' 
-                  : 'bg-secondary-container text-on-secondary-container hover:bg-white/10'
-              }`}
-            >
-              {cat.name}
-            </button>
-          ))}
+          {categoriesLoading ? (
+            <>
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="px-6 py-4 rounded-full bg-surface-variant/50 animate-pulse w-24 shrink-0"></div>
+              ))}
+            </>
+          ) : (
+            <>
+              <button 
+                onClick={() => setSelectedCategory('')}
+                className={`px-6 py-2 rounded-full text-sm font-semibold whitespace-nowrap transition-colors flex-shrink-0 ${
+                  selectedCategory === '' 
+                    ? 'bg-primary text-on-primary shadow-[0_0_20px_rgba(22,106,152,0.3)]' 
+                    : 'bg-secondary-container text-on-secondary-container hover:bg-white/10'
+                }`}
+              >
+                Todos
+              </button>
+              
+              {categories?.map((cat: any) => (
+                <button 
+                  key={cat.id}
+                  onClick={() => setSelectedCategory(cat.id)}
+                  className={`px-6 py-2 rounded-full text-sm font-semibold whitespace-nowrap transition-colors flex-shrink-0 ${
+                    selectedCategory === cat.id 
+                      ? 'bg-primary text-on-primary shadow-[0_0_20px_rgba(22,106,152,0.3)]' 
+                      : 'bg-secondary-container text-on-secondary-container hover:bg-white/10'
+                  }`}
+                >
+                  {cat.name}
+                </button>
+              ))}
+            </>
+          )}
         </div>
       </section>
 
-      {isLoading ? (
-        <div className="flex justify-center items-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-        </div>
+      {recsLoading ? (
+        <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {[...Array(6)].map((_, i) => (
+            <SkeletonServiceCard key={i} />
+          ))}
+        </section>
       ) : (
         <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {recommendations?.map((rec: Recommendation) => (

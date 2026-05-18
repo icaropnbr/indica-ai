@@ -3,13 +3,14 @@ import { useAuth } from '../hooks/useAuth';
 import { useUserRecommendations, deleteRecommendation } from '../hooks/useRecommendations';
 import { useCategories } from '../hooks/useCategories';
 import { ServiceCard } from '../components/ui/ServiceCard';
+import { SkeletonServiceCard } from '../components/ui/SkeletonServiceCard';
 import { Star, Bookmark, AlertTriangle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export function Profile() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { recommendations, mutate } = useUserRecommendations(user?.uid || '');
+  const { recommendations, isLoading: recsLoading, mutate } = useUserRecommendations(user?.uid || '');
   const { categories } = useCategories();
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -109,7 +110,13 @@ export function Profile() {
           <Bookmark className="w-6 h-6" /> Minhas Indicações
         </h2>
         
-        {(!recommendations || recommendations.length === 0) ? (
+        {recsLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-8">
+            {[...Array(4)].map((_, i) => (
+              <SkeletonServiceCard key={i} />
+            ))}
+          </div>
+        ) : (!recommendations || recommendations.length === 0) ? (
           <div className="p-12 text-center border-2 border-dashed border-white/20 rounded-3xl">
             <p className="text-on-surface-variant font-medium">Você ainda não fez nenhuma indicação.</p>
           </div>

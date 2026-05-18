@@ -1,5 +1,5 @@
 import React from 'react';
-import { Heart, Star, User, Edit, MessageSquare, MessageCircle, Globe, Trash2, Calendar } from 'lucide-react';
+import { Heart, Star, User, Edit, MessageSquare, MessageCircle, Globe, Trash2, Calendar, Share2 } from 'lucide-react';
 import { motion } from 'motion/react';
 import type { Recommendation } from '../../types';
 
@@ -30,6 +30,27 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
   onReview,
   isLoggedIn = true
 }) => {
+  const handleShare = async () => {
+    const shareData = {
+      title: recommendation.title,
+      text: `Confira esta indicação: ${recommendation.title} - ${categoryName}\n\n${recommendation.description}`,
+      url: window.location.href,
+    };
+
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+      } catch (err) {
+        if ((err as Error).name !== 'AbortError') {
+          console.warn('Erro ao compartilhar:', err);
+        }
+      }
+    } else {
+      navigator.clipboard.writeText(`${shareData.text}\n${shareData.url}`);
+      alert('Link copiado para a área de transferência!');
+    }
+  };
+
   return (
     <div className="glass-card rounded-xl overflow-hidden flex flex-col h-full group transition-transform hover:-translate-y-1">
       <div className="relative pt-6 px-6 flex justify-between items-start mb-2 gap-2">
@@ -37,18 +58,26 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
           {categoryIcon && <span className="material-symbols-outlined text-[16px] leading-[1]">{categoryIcon}</span>}
           {categoryName}
         </div>
-        <button 
-          onClick={onToggleFavorite}
-          className={`relative p-2 rounded-full transition-all active:scale-95 group/fav flex items-center justify-center -mt-2 -mr-2 ${isFavorite ? 'bg-error/10 text-error' : 'text-on-surface-variant hover:bg-white/5'}`} aria-label="Favoritar"
-        >
-          <motion.div
-            initial={false}
-            animate={{ scale: isFavorite ? 1.1 : 1 }}
-            transition={{ type: "spring", stiffness: 400, damping: 10 }}
+        <div className="flex items-center gap-1 -mt-2 -mr-2">
+          <button 
+            onClick={handleShare}
+            className="text-on-surface-variant p-2 rounded-full hover:bg-white/5 transition-colors active:scale-95 flex items-center justify-center" aria-label="Compartilhar"
           >
-            <Heart className={`relative z-10 w-6 h-6 transition-all duration-300 ${isFavorite ? 'fill-error drop-shadow-[0_0_8px_rgba(255,100,100,0.5)]' : 'group-hover/fav:scale-110'}`} />
-          </motion.div>
-        </button>
+            <Share2 className="w-5 h-5 transition-transform hover:scale-110" />
+          </button>
+          <button 
+            onClick={onToggleFavorite}
+            className={`relative p-2 rounded-full transition-all active:scale-95 group/fav flex items-center justify-center ${isFavorite ? 'bg-error/10 text-error' : 'text-on-surface-variant hover:bg-white/5'}`} aria-label="Favoritar"
+          >
+            <motion.div
+              initial={false}
+              animate={{ scale: isFavorite ? 1.1 : 1 }}
+              transition={{ type: "spring", stiffness: 400, damping: 10 }}
+            >
+              <Heart className={`relative z-10 w-6 h-6 transition-all duration-300 ${isFavorite ? 'fill-error drop-shadow-[0_0_8px_rgba(255,100,100,0.5)]' : 'group-hover/fav:scale-110'}`} />
+            </motion.div>
+          </button>
+        </div>
       </div>
 
       <div className="p-6 pt-2 flex flex-col flex-grow">
