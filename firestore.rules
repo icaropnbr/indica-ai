@@ -61,11 +61,6 @@ service cloud.firestore {
         && data.createdAt is timestamp;
     }
 
-    // Default allow all for testing
-    match /{document=**} { 
-      allow read, write: if true; 
-    }
-
     // --- Users ---
     match /users/{userId} {
       allow read: if true; 
