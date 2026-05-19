@@ -1,10 +1,11 @@
 import useSWR from 'swr';
-import { collection, getDocs, doc, addDoc, updateDoc, query, where, serverTimestamp, Query } from 'firebase/firestore';
+import { collection, getDocs, doc, addDoc, updateDoc, query, where, serverTimestamp, Query, limit } from 'firebase/firestore';
 import type { DocumentData } from 'firebase/firestore';
 import { db } from '../services/firebase/config';
 import type { Category } from '../types';
 
 const CATEGORIES_PATH = 'categories';
+const RECOMMENDATIONS_PATH = 'recommendations';
 
 const fetchCategories = async (onlyActive = true) => {
   let q: Query<DocumentData, DocumentData> = collection(db, CATEGORIES_PATH);
@@ -19,6 +20,30 @@ export function useCategories(onlyActive = true) {
   const { data, error, isLoading, mutate } = useSWR(
     `categories?active=${onlyActive}`,
     () => fetchCategories(onlyActive)
+  );
+
+  return { categories: data || [], error, isLoading, mutate };
+}
+
+const fetchPopulatedCategories = async () => {
+  const allCategories = await fetchCategories(true);
+  const populated = await Promise.all(allCategories.map(async (cat) => {
+    const q = query(
+      collection(db, RECOMMENDATIONS_PATH),
+      where('categoryId', '==', cat.id),
+      where('status', '==', 'active'),
+      limit(1)
+    );
+    const snapshot = await getDocs(q);
+    return snapshot.empty ? null : cat;
+  }));
+  return populated.filter(Boolean) as Category[];
+};
+
+export function usePopulatedCategories() {
+  const { data, error, isLoading, mutate } = useSWR(
+    'categories/populated',
+    fetchPopulatedCategories
   );
 
   return { categories: data || [], error, isLoading, mutate };

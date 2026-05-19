@@ -4,7 +4,7 @@ import { ServiceCard } from '../components/ui/ServiceCard';
 import { SkeletonServiceCard } from '../components/ui/SkeletonServiceCard';
 import { ReviewModal } from '../components/ui/ReviewModal';
 import { useRecommendations } from '../hooks/useRecommendations';
-import { useCategories } from '../hooks/useCategories';
+import { useCategories, usePopulatedCategories } from '../hooks/useCategories';
 import { useAuth } from '../hooks/useAuth';
 import type { Recommendation } from '../types';
 
@@ -54,7 +54,8 @@ export function Home() {
     if (node) observer.current.observe(node);
   }, [recsLoading, hasMore, fetchMore]);
 
-  const { categories, isLoading: categoriesLoading } = useCategories();
+  const { categories } = useCategories();
+  const { categories: populatedCategories, isLoading: categoriesLoading } = usePopulatedCategories();
   const { user } = useAuth();
 
 
@@ -125,7 +126,7 @@ export function Home() {
                 Todos
               </button>
               
-              {categories?.map((cat: any) => (
+              {populatedCategories?.map((cat: any) => (
                 <button 
                   key={cat.id}
                   onClick={() => setSelectedCategory(cat.id)}

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider, OAuthProvider, signOut as firebaseSignOut, type User as FirebaseUser } from 'firebase/auth';
+import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut as firebaseSignOut, type User as FirebaseUser } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../services/firebase/config';
 import type { User } from '../types';
@@ -59,12 +59,20 @@ export function useAuth() {
     }
   };
 
-  const signInWithApple = async () => {
+  const signInWithEmail = async (email: string, pass: string) => {
     try {
-      const provider = new OAuthProvider('apple.com');
-      await signInWithPopup(auth, provider);
+      await signInWithEmailAndPassword(auth, email, pass);
     } catch (error) {
-      console.error("Error signing in with Apple:", error);
+      console.error("Error signing in with Email:", error);
+      throw error;
+    }
+  };
+
+  const signUpWithEmail = async (email: string, pass: string) => {
+    try {
+      await createUserWithEmailAndPassword(auth, email, pass);
+    } catch (error) {
+      console.error("Error signing up with Email:", error);
       throw error;
     }
   };
@@ -78,5 +86,5 @@ export function useAuth() {
     }
   };
 
-  return { user, loading, signInWithGoogle, signInWithApple, signOut };
+  return { user, loading, signInWithGoogle, signInWithEmail, signUpWithEmail, signOut };
 }
