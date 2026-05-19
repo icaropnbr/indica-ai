@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ServiceCard } from '../components/ui/ServiceCard';
 import { SkeletonServiceCard } from '../components/ui/SkeletonServiceCard';
@@ -40,7 +40,20 @@ export function Home() {
     scrollRef.current.scrollLeft = scrollLeft - walk;
   };
 
-  const { recommendations, isLoading: recsLoading, mutate } = useRecommendations(selectedCategory);
+  const { recommendations, isLoading: recsLoading, mutate, fetchMore, hasMore } = useRecommendations(selectedCategory);
+  
+  const observer = useRef<IntersectionObserver | null>(null);
+  const lastElementRef = useCallback((node: HTMLDivElement | null) => {
+    if (recsLoading) return;
+    if (observer.current) observer.current.disconnect();
+    observer.current = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting && hasMore) {
+        fetchMore();
+      }
+    });
+    if (node) observer.current.observe(node);
+  }, [recsLoading, hasMore, fetchMore]);
+
   const { categories, isLoading: categoriesLoading } = useCategories();
   const { user } = useAuth();
 
@@ -130,35 +143,57 @@ export function Home() {
         </div>
       </section>
 
-      {recsLoading ? (
+      {recsLoading && !recommendations ? (
         <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {[...Array(6)].map((_, i) => (
             <SkeletonServiceCard key={i} />
           ))}
         </section>
       ) : (
-        <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {recommendations?.map((rec: Recommendation) => (
-            <ServiceCard
-              key={rec.id}
-              recommendation={rec}
-              categoryName={getCategoryName(rec.categoryId)}
-              categoryIcon={getCategoryIcon(rec.categoryId)}
-              isFavorite={!!favorites[rec.id!]}
-              onToggleFavorite={() => toggleFav(rec.id!)}
-              authorName={"Usuário"} 
-              isAuthor={user?.uid === rec.authorId}
-              onEdit={() => handleEdit(rec.id!)}
-              isLoggedIn={!!user}
-              onReview={() => setReviewRecId(rec.id!)}
-            />
-          ))}
-          {(!recommendations || recommendations.length === 0) && (
-            <div className="col-span-full py-12 text-center text-on-surface-variant">
-              Nenhuma indicação encontrada! Que tal ser o primeiro a indicar?
+        <>
+          <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {recommendations?.map((rec: Recommendation, index: number) => {
+              const Component = (
+                <ServiceCard
+                  key={rec.id}
+                  recommendation={rec}
+                  categoryName={getCategoryName(rec.categoryId)}
+                  categoryIcon={getCategoryIcon(rec.categoryId)}
+                  isFavorite={!!favorites[rec.id!]}
+                  onToggleFavorite={() => toggleFav(rec.id!)}
+                  authorName={"Usuário"} 
+                  isAuthor={user?.uid === rec.authorId}
+                  onEdit={() => handleEdit(rec.id!)}
+                  isLoggedIn={!!user}
+                  onReview={() => setReviewRecId(rec.id!)}
+                />
+              );
+              
+              if (recommendations.length === index + 1) {
+                return (
+                  <div ref={lastElementRef} key={`wrapper-${rec.id}`}>
+                    {Component}
+                  </div>
+                );
+              }
+              return Component;
+            })}
+            {(!recommendations || recommendations.length === 0) && (
+              <div className="col-span-full py-12 text-center text-on-surface-variant">
+                Nenhuma indicação encontrada! Que tal ser o primeiro a indicar?
+              </div>
+            )}
+          </section>
+          
+          {recsLoading && recommendations && recommendations.length > 0 && (
+            <div className="flex justify-center mt-8">
+              <div className="animate-pulse text-on-surface-variant font-medium flex items-center gap-2">
+                <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                Carregando mais...
+              </div>
             </div>
           )}
-        </section>
+        </>
       )}
     </div>
   );

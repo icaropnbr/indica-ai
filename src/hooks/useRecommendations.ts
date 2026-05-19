@@ -1,5 +1,6 @@
+import { useState, useEffect } from 'react';
 import useSWR from 'swr';
-import { collection, getDocs, query, where, getDoc, doc, addDoc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, getDocs, query, where, getDoc, doc, addDoc, updateDoc, deleteDoc, serverTimestamp, orderBy, limit, startAfter } from 'firebase/firestore';
 import { db, auth } from '../services/firebase/config';
 import { handleFirestoreError, OperationType } from '../services/firebase/error';
 import type { Recommendation } from '../types';
@@ -62,12 +63,89 @@ const fetchRecommendation = async (id: string) => {
 
 // Hooks
 export const useRecommendations = (categoryId?: string) => {
-  const { data, error, isLoading, mutate } = useSWR(
-    categoryId ? `recommendations?category=${categoryId}` : 'recommendations',
-    () => fetchRecommendations('recommendations', categoryId)
-  );
+  const [recommendations, setRecommendations] = useState<Recommendation[] | undefined>(undefined);
+  const [lastDoc, setLastDoc] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasMore, setHasMore] = useState(true);
+  const [error, setError] = useState<any>(null);
 
-  return { recommendations: data, error, isLoading, mutate };
+  const fetchMore = async (isInitial = false) => {
+    if ((!hasMore && !isInitial) || (!isInitial && isLoading)) return;
+    
+    if (isInitial) {
+      setIsLoading(true);
+      setRecommendations(undefined);
+    }
+    
+    try {
+      let q = query(
+        collection(db, RECOMMENDATIONS_PATH),
+        where('status', '==', 'active'),
+        orderBy('createdAt', 'desc'),
+        limit(6)
+      );
+
+      if (categoryId) {
+        q = query(
+          collection(db, RECOMMENDATIONS_PATH),
+          where('categoryId', '==', categoryId),
+          where('status', '==', 'active'),
+          orderBy('createdAt', 'desc'),
+          limit(6)
+        );
+      }
+
+      if (!isInitial && lastDoc) {
+        q = query(q, startAfter(lastDoc));
+      }
+
+      const snapshot = await getDocs(q);
+      const docs = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return { 
+          id: doc.id, 
+          ...data,
+          createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : data.createdAt
+        } as Recommendation;
+      });
+
+      if (docs.length < 6) {
+        setHasMore(false);
+      } else {
+        setHasMore(true);
+      }
+
+      if (isInitial) {
+        setRecommendations(docs);
+      } else {
+        setRecommendations(prev => {
+          if (!prev) return docs;
+          const newDocs = docs.filter(d => !prev.find(p => p.id === d.id));
+          return [...prev, ...newDocs];
+        });
+      }
+
+      if (snapshot.docs.length > 0) {
+        setLastDoc(snapshot.docs[snapshot.docs.length - 1]);
+      }
+    } catch (err) {
+      console.error(err);
+      setError(err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    setLastDoc(null);
+    setHasMore(true);
+    fetchMore(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [categoryId]);
+
+  const mutate = () => fetchMore(true);
+
+  return { recommendations, error, isLoading, hasMore, fetchMore, mutate };
 };
 
 export const useUserRecommendations = (userId: string) => {

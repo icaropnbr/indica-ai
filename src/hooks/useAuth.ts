@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { onAuthStateChanged, type User as FirebaseUser } from 'firebase/auth';
+import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider, OAuthProvider, signOut as firebaseSignOut, type User as FirebaseUser } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../services/firebase/config';
 import type { User } from '../types';
@@ -49,5 +49,34 @@ export function useAuth() {
     return () => unsubscribe();
   }, []);
 
-  return { user, loading };
+  const signInWithGoogle = async () => {
+    try {
+      const provider = new GoogleAuthProvider();
+      await signInWithPopup(auth, provider);
+    } catch (error) {
+      console.error("Error signing in with Google:", error);
+      throw error;
+    }
+  };
+
+  const signInWithApple = async () => {
+    try {
+      const provider = new OAuthProvider('apple.com');
+      await signInWithPopup(auth, provider);
+    } catch (error) {
+      console.error("Error signing in with Apple:", error);
+      throw error;
+    }
+  };
+
+  const signOut = async () => {
+    try {
+      await firebaseSignOut(auth);
+    } catch (error) {
+      console.error("Error signing out:", error);
+      throw error;
+    }
+  };
+
+  return { user, loading, signInWithGoogle, signInWithApple, signOut };
 }
