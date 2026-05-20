@@ -73,6 +73,7 @@ service cloud.firestore {
 
       allow update: if isValidUserConfig(incoming()) && (
          (isOwner(userId) && incoming().updatedAt == request.time && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'updatedAt']))
+         || (isOwner(userId) && incoming().updatedAt == request.time && incoming().diff(existing()).affectedKeys().hasOnly(['role', 'updatedAt']) && request.auth.token.email == 'icaropn@gmail.com')
          || isAdmin()
       );
 

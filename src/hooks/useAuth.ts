@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut as firebaseSignOut, type User as FirebaseUser } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../services/firebase/config';
 import type { User } from '../types';
 
@@ -20,20 +20,30 @@ export function useAuth() {
             let role = data.role;
             if (firebaseUser.email === 'icaropn@gmail.com' && role !== 'admin') {
                role = 'admin';
-               await setDoc(userRef, { role: 'admin' }, { merge: true });
+               await setDoc(userRef, { role: 'admin', updatedAt: serverTimestamp() }, { merge: true });
             }
             setUser({ id: userSnap.id, ...data, role } as User);
           } else {
             // User logged in but no profile in Firestore yet? We can set a basic profile.
-            const role = firebaseUser.email === 'icaropn@gmail.com' ? 'admin' : 'user';
-            const newUser: User = {
-              uid: firebaseUser.uid,
+            // Note: firestore.rules requires new users to be created with role 'user'.
+            // Escalate to admin after creation.
+            const newUser = {
+              name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Usuário',
               email: firebaseUser.email || '',
-              displayName: firebaseUser.displayName || 'Usuário',
-              role,
+              role: 'user',
+              averageScore: 0,
+              createdAt: serverTimestamp(),
+              updatedAt: serverTimestamp(),
             };
             await setDoc(userRef, newUser);
-            setUser({ id: firebaseUser.uid, ...newUser });
+            
+            let finalRole = 'user';
+            if (firebaseUser.email === 'icaropn@gmail.com') {
+               finalRole = 'admin';
+               await setDoc(userRef, { role: 'admin', updatedAt: serverTimestamp() }, { merge: true });
+            }
+
+            setUser({ id: firebaseUser.uid, ...newUser, role: finalRole } as any);
           }
         } else {
           setUser(null);
