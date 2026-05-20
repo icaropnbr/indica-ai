@@ -35,10 +35,10 @@ service cloud.firestore {
         return data.title is string && data.title.size() > 0 && data.title.size() <= 150
         && data.description is string && data.description.size() <= 5000
         && data.categoryId is string && data.categoryId.size() <= 128
-        && data.authorId is string && data.authorId == request.auth.uid
+        && data.authorId is string
         && data.status is string && data.status in ['active', 'inactive']
-        && data.rating is number
-        && data.ratingsCount is number
+        && data.rating is number && data.rating >= 0 && data.rating <= 5
+        && data.ratingsCount is number && data.ratingsCount >= 0
         && data.createdAt is timestamp
         && data.updatedAt is timestamp
         && (!('contactPhone' in data) || (data.contactPhone is string && data.contactPhone.size() <= 20))
@@ -69,7 +69,8 @@ service cloud.firestore {
                     && isValidUserConfig(incoming())
                     && incoming().createdAt == request.time
                     && incoming().updatedAt == request.time
-                    && incoming().role == 'user'; 
+                    && incoming().role == 'user'
+                    && incoming().averageScore == 0; 
 
       allow update: if isValidUserConfig(incoming()) && (
          (isOwner(userId) && incoming().updatedAt == request.time && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'updatedAt']))
@@ -82,6 +83,7 @@ service cloud.firestore {
         
         allow create: if isOwner(userId) && isValidId(favoriteId) && isValidId(userId)
             && isValidFavoriteConfig(incoming())
+            && incoming().createdAt == request.time
             && exists(/databases/$(database)/documents/recommendations/$(incoming().recommendationId));
             
         allow delete: if isOwner(userId) && isValidId(favoriteId) && isValidId(userId);
@@ -100,11 +102,15 @@ service cloud.firestore {
     match /recommendations/{recommendationId} {
       allow read: if true; 
       
-      allow create: if isSignedIn() && isValidRecommendationConfig(incoming());
+      allow create: if isSignedIn() && isValidRecommendationConfig(incoming()) && incoming().authorId == request.auth.uid
+                    && incoming().rating == 0 && incoming().ratingsCount == 0;
                     
       allow update: if isValidRecommendationConfig(incoming()) && (
-          (isSignedIn() && existing().authorId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'categoryId', 'status', 'contactPhone', 'contactWebsite', 'updatedAt']) && incoming().authorId == existing().authorId)
-          || (isSignedIn() && incoming().diff(existing()).affectedKeys().hasOnly(['rating', 'ratingsCount', 'updatedAt']))
+          (isSignedIn() && existing().authorId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'categoryId', 'status', 'contactPhone', 'contactWebsite', 'updatedAt']) && incoming().authorId == existing().authorId && incoming().updatedAt == request.time)
+          || (isSignedIn() && incoming().diff(existing()).affectedKeys().hasOnly(['rating', 'ratingsCount', 'updatedAt']) 
+              && incoming().ratingsCount >= existing().ratingsCount - 1 
+              && incoming().ratingsCount <= existing().ratingsCount + 1 
+              && incoming().updatedAt == request.time)
           || isAdmin()
       );
       allow delete: if (isSignedIn() && existing().authorId == request.auth.uid) || isAdmin();
@@ -112,10 +118,11 @@ service cloud.firestore {
       match /reviews/{reviewId} {
         allow read: if true; 
         
-        allow create: if isSignedIn() && isValidId(reviewId) && isValidId(recommendationId) && isValidReviewConfig(incoming());
+        allow create: if isSignedIn() && reviewId == request.auth.uid && isValidId(recommendationId) && isValidReviewConfig(incoming())
+                      && incoming().createdAt == request.time && incoming().updatedAt == request.time;
                       
-        allow update: if isSignedIn() && isValidId(reviewId) && isValidId(recommendationId) && isValidReviewConfig(incoming()) && (
-          (existing().authorId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['rating', 'comment', 'updatedAt']) && incoming().authorId == existing().authorId)
+        allow update: if isSignedIn() && reviewId == request.auth.uid && isValidId(recommendationId) && isValidReviewConfig(incoming()) && (
+          (existing().authorId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['rating', 'comment', 'updatedAt']) && incoming().authorId == existing().authorId && incoming().updatedAt == request.time)
           || isAdmin()
         );
         allow delete: if (isSignedIn() && existing().authorId == request.auth.uid) || isAdmin();
